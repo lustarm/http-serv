@@ -1,8 +1,7 @@
 use log::info;
-use parse::parse_req;
-use tokio::io::AsyncReadExt;
 use tokio::net::TcpListener;
 
+mod handle;
 mod http;
 mod parse;
 
@@ -16,19 +15,17 @@ async fn main() -> std::io::Result<()> {
     info!("listening on port 8080");
 
     loop {
-        let (mut socket, _) = listener.accept().await?;
+        let (socket, _) = listener.accept().await?;
 
         tokio::spawn(async move {
-            let mut buffer: [u8; 128] = [0; 128];
-            socket.read(&mut buffer).await.unwrap();
-
             /*
                 GET / HTTP/1.1
                 Host: localhost:8080
                 User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0
                 Accept
             */
-            parse_req(&buffer);
+
+            handle::handle_req(socket);
         });
     }
 }

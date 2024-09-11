@@ -32,7 +32,7 @@ impl HttpPayload {
         self.http_type = http_type;
     }
 
-    // Self explainitory
+    // Self explanatory
     pub fn add_header(&mut self, key: String, value: String) {
         self.headers.insert(key, value);
     }
