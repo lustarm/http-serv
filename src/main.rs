@@ -1,7 +1,9 @@
 use log::info;
+use parse::parse_req;
 use tokio::io::AsyncReadExt;
 use tokio::net::TcpListener;
 
+mod http;
 mod parse;
 
 #[tokio::main]
@@ -26,6 +28,7 @@ async fn main() -> std::io::Result<()> {
                 User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0
                 Accept
             */
+            parse_req(&buffer);
         });
     }
 }
