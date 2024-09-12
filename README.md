@@ -1,7 +1,7 @@
 ### Simple async http server in rust
-> Async http server
+Async http server
 
 #### To Run
-**cargo r**
+cargo r
 #### To Build
-**cargo build -r**
+cargo build -r
