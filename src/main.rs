@@ -25,7 +25,7 @@ async fn main() -> std::io::Result<()> {
                 Accept
             */
 
-            handle::handle_req(socket);
+            handle::handle_req(socket).await;
         });
     }
 }
