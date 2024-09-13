@@ -11,11 +11,17 @@ async fn main() -> std::io::Result<()> {
         .filter_level(log::LevelFilter::Info)
         .init();
 
+    // Create routes
+    let mut router = handle::Router::new();
+    router.add_route("/".to_string(), "hello".to_string());
+    info!("Created route /");
+
     let listener = TcpListener::bind("127.0.0.1:8080").await?;
     info!("listening on port 8080");
 
     loop {
         let (socket, _) = listener.accept().await?;
+        let router = router.clone();
 
         tokio::spawn(async move {
             /*
@@ -25,7 +31,7 @@ async fn main() -> std::io::Result<()> {
                 Accept
             */
 
-            handle::handle_req(socket).await;
+            handle::handle_req(socket, router).await;
         });
     }
 }
