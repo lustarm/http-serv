@@ -18,15 +18,16 @@ pub fn parse_req(input: &[u8]) -> HttpPayload {
             let parts: Vec<&[u8]> = line.split(|&byte| byte == b' ').collect();
             if parts.len() >= 3 {
                 let path = String::from_utf8_lossy(parts[1]);
-                let version = String::from_utf8_lossy(parts[2]);
+                // let version = String::from_utf8_lossy(parts[2]);
 
                 // Set payload to GET
                 info!("Method: GET");
                 http_payload.set_type(HttpType::GET);
 
-                // We don't care abt this rn
                 info!("Path: {}", path);
-                info!("Version: {}", version);
+                http_payload.set_path(path.to_string());
+                // Dont care abt version tbh
+                // info!("Version: {}", version);
             }
         } else {
             info!("Invalid request");

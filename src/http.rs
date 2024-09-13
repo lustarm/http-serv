@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone)]
 pub enum HttpType {
     // None for when we don't
     // know http type...
@@ -40,6 +40,7 @@ impl HttpStatus {
 // Just easier to read later on
 type HttpHeaders = HashMap<String, String>;
 
+#[derive(Clone)]
 pub struct HttpPayload {
     headers: HttpHeaders,
     http_type: HttpType,
@@ -58,6 +59,7 @@ impl HttpPayload {
         }
     }
 
+    // Http type
     pub fn set_type(&mut self, http_type: HttpType) {
         self.http_type = http_type;
     }
@@ -66,7 +68,16 @@ impl HttpPayload {
         self.http_type
     }
 
-    // Self explanatory
+    // Path
+    pub fn set_path(&mut self, path: String) {
+        self.path = path;
+    }
+
+    pub fn get_path(self) -> String {
+        self.path
+    }
+
+    // Headers
     pub fn add_header(&mut self, key: String, value: String) {
         self.headers.insert(key, value);
     }

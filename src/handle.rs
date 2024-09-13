@@ -4,14 +4,40 @@ use log::info;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 
+pub async fn handle_get(mut socket: TcpStream, payload: http::HttpPayload) {
+    // Hardcode paths
+    match payload.get_path().as_str() {
+        "/" => {
+            socket
+                .write_all(
+                    http::HttpResponse::new("HTTP/1.1", http::HttpStatus::Ok, "hello, world")
+                        .to_string()
+                        .as_bytes(),
+                )
+                .await
+                .unwrap();
+        }
+        _ => {
+            socket
+                .write_all(
+                    http::HttpResponse::new("HTTP/1.1", http::HttpStatus::Ok, "404")
+                        .to_string()
+                        .as_bytes(),
+                )
+                .await
+                .unwrap();
+        }
+    }
+}
+
 pub async fn handle_req(mut socket: TcpStream) {
     let mut buffer: [u8; 128] = [0; 128];
     socket.read(&mut buffer).await.unwrap();
 
     // Parse
     let http_payload: http::HttpPayload = parse_req(&buffer);
-
-    let http_response = http::HttpResponse::new("HTTP/1.1", http::HttpStatus::Ok, "hello world!");
+    // So fucking ugly i can't lie
+    let http_payload_clone = http_payload.clone();
 
     match http_payload.get_type() {
         http::HttpType::NONE => {
@@ -24,16 +50,10 @@ pub async fn handle_req(mut socket: TcpStream) {
             return;
         }
         http::HttpType::GET => {
-            socket
-                .write_all(http_response.to_string().as_bytes())
-                .await
-                .unwrap();
+            handle_get(socket, http_payload_clone).await;
         }
         http::HttpType::_POST => {
-            socket
-                .write_all(http_response.to_string().as_bytes())
-                .await
-                .unwrap();
+            handle_get(socket, http_payload_clone).await;
         }
     }
 }
