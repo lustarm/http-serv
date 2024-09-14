@@ -1,66 +1,17 @@
 use crate::http;
 use crate::parse::parse_req;
-use futures::future::BoxFuture;
 use log::info;
-use std::collections::HashMap;
-use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 
-type RouterFunction = dyn Fn(&mut TcpStream) -> BoxFuture<std::io::Result<()>> + Send + Sync;
-
-type RouterFunctionWrapper = Arc<Box<RouterFunction>>;
-
-// Simple router for testing
-#[derive(Clone)]
-pub struct Router {
-    routes: HashMap<String, RouterFunctionWrapper>,
-}
-
-impl Router {
-    pub fn new() -> Self {
-        Router {
-            routes: HashMap::new(),
-        }
-    }
-
-    pub fn add_route(&mut self, key: &str, payload: RouterFunctionWrapper) {
-        self.routes.insert(key.to_string(), payload);
-    }
-
-    pub async fn not_found(self, writer: &mut TcpStream) -> std::io::Result<()> {
-        writer
-            .write_all(
-                http::HttpResponse::new(
-                    "HTTP/1.1",
-                    http::HttpStatus::NotFound,
-                    "404 page not found",
-                )
-                .to_string()
-                .as_bytes(),
-            )
-            .await?;
-
-        Ok(())
-    }
-
-    /*
-    pub fn get_route(&self, key: &str) -> Option<&String> {
-        self.routes.get(key)
-    }
-
-    pub fn get_routes(self) -> HashMap<String, String> {
-        self.routes
-    }
-    */
-}
+use crate::router::Router;
 
 pub async fn handle_get(
     mut writer: TcpStream,
     payload: http::HttpPayload,
     router: Router,
 ) -> std::io::Result<()> {
-    for (key, value) in router.routes.clone().into_iter() {
+    for (key, value) in router.clone().get_routes().into_iter() {
         if payload.clone().get_path() != key {
             router.clone().not_found(&mut writer).await?;
         }

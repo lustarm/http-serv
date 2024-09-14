@@ -9,6 +9,7 @@ use tokio::{
 mod handle;
 mod http;
 mod parse;
+mod router;
 
 // Test function
 // W = writer = socket
@@ -26,11 +27,11 @@ async fn test(w: &mut TcpStream) -> std::io::Result<()> {
 
 struct HttpService {
     listener: TcpListener,
-    router: handle::Router,
+    router: router::Router,
 }
 
 impl HttpService {
-    pub fn new(listener: TcpListener, router: handle::Router) -> Self {
+    pub fn new(listener: TcpListener, router: router::Router) -> Self {
         HttpService { listener, router }
     }
 
@@ -64,7 +65,7 @@ async fn main() -> std::io::Result<()> {
         .init();
 
     // Create routes
-    let mut router = handle::Router::new();
+    let mut router = router::Router::new();
     // Instead of doing just the body
     // add some functionallity with Fn()
     router.add_route("/", Arc::new(Box::new(|input| (test(input).boxed()))));

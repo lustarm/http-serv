@@ -13,7 +13,7 @@ pub enum HttpType {
 pub enum HttpStatus {
     Ok,
     NotFound,
-    InternalServerError,
+    _InternalServerError,
     // Add more status codes as needed
 }
 
@@ -22,7 +22,7 @@ impl HttpStatus {
         match self {
             HttpStatus::Ok => 200,
             HttpStatus::NotFound => 404,
-            HttpStatus::InternalServerError => 500,
+            HttpStatus::_InternalServerError => 500,
             // Handle other status codes
         }
     }
@@ -31,7 +31,7 @@ impl HttpStatus {
         match self {
             HttpStatus::Ok => "OK",
             HttpStatus::NotFound => "Not Found",
-            HttpStatus::InternalServerError => "Internal Server Error",
+            HttpStatus::_InternalServerError => "Internal Server Error",
             // Handle other status messages
         }
     }
