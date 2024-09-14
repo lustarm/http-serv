@@ -1,45 +1,46 @@
 use crate::http;
 use crate::parse::parse_req;
-use log::info;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::AsyncReadExt;
 use tokio::net::TcpStream;
 
 use crate::router::Router;
 
-pub async fn handle_get(
-    mut writer: TcpStream,
-    payload: http::HttpPayload,
+pub struct Handler {
+    writer: TcpStream,
     router: Router,
-) -> std::io::Result<()> {
-    for (key, value) in router.clone().get_routes().into_iter() {
-        if payload.clone().get_path() != key {
-            router.clone().not_found(&mut writer).await?;
-        }
-        value(&mut writer).await?;
-    }
-    Ok(())
+    // payload: http::HttpPayload,
 }
 
-pub async fn handle_req(mut socket: TcpStream, router: Router) -> std::io::Result<()> {
-    let mut buffer: [u8; 128] = [0; 128];
-    socket.read(&mut buffer).await.unwrap();
+const BUFFER_MAX: usize = 9000;
 
-    // Parse
-    let http_payload: http::HttpPayload = parse_req(&buffer);
-
-    match http_payload.clone().get_type() {
-        http::HttpType::NONE => {
-            info!("Invalid request type");
-            let error_response = "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n";
-            if let Err(e) = socket.write_all(error_response.as_bytes()).await {
-                info!("Failed to send error response: {}", e);
-            }
-        }
-        http::HttpType::GET => {
-            handle_get(socket, http_payload, router).await?;
-        }
-        http::HttpType::_POST => {}
+impl Handler {
+    pub fn new(writer: TcpStream, router: Router) -> Self {
+        Handler { writer, router }
     }
 
-    Ok(())
+    pub async fn handle_get(&mut self, payload: http::HttpPayload) -> std::io::Result<()> {
+        for (key, value) in self.router.clone().get_routes().into_iter() {
+            if payload.clone().get_path() != key {
+                self.router.clone().not_found(&mut self.writer).await?;
+            }
+            value(&mut self.writer).await?;
+        }
+        Ok(())
+    }
+
+    pub async fn handle_request(&mut self) -> std::io::Result<()> {
+        let mut reader = [0; BUFFER_MAX];
+        self.writer.read(&mut reader).await?;
+
+        let payload = parse_req(&reader);
+
+        match payload.clone().get_type() {
+            http::HttpType::_NONE => {}
+            http::HttpType::GET => {
+                self.handle_get(payload).await?;
+            }
+            http::HttpType::_POST => {}
+        }
+        Ok(())
+    }
 }

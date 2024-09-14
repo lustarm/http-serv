@@ -1,12 +1,17 @@
+use log::info;
 use std::collections::HashMap;
+use tokio::net::TcpListener;
+
+use crate::handle;
+use crate::router::Router;
 
 #[derive(PartialEq, Clone)]
 pub enum HttpType {
     // None for when we don't
     // know http type...
     // if http_type == HttpType::NONE
-    NONE,
     GET,
+    _NONE,
     _POST,
 }
 
@@ -54,7 +59,7 @@ impl HttpPayload {
             headers: HashMap::new(),
 
             // Default to none
-            http_type: HttpType::NONE,
+            http_type: HttpType::_NONE,
             path: String::new(),
         }
     }
@@ -122,5 +127,40 @@ impl HttpResponse {
         response.push_str("\r\n");
         response.push_str(&self.body);
         response
+    }
+}
+
+pub struct HttpService {
+    listener: TcpListener,
+    router: Router,
+}
+
+impl HttpService {
+    pub fn new(listener: TcpListener, router: Router) -> Self {
+        HttpService { listener, router }
+    }
+
+    pub async fn listen_and_serve(self) -> std::io::Result<()> {
+        loop {
+            let (writer, _) = self.listener.accept().await?;
+            let router = self.router.clone();
+
+            tokio::spawn(async move {
+                /*
+                    GET / HTTP/1.1
+                    Host: localhost:8080
+                    User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0
+                    Accept
+                */
+
+                // Create handler
+
+                let mut handler = handle::Handler::new(writer, router);
+                handler
+                    .handle_request()
+                    .await
+                    .unwrap_or_else(|e| info!("Error: {}", e));
+            });
+        }
     }
 }
