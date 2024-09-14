@@ -136,7 +136,8 @@ pub struct HttpService {
 }
 
 impl HttpService {
-    pub fn new(listener: TcpListener, router: Router) -> Self {
+    pub async fn new(router: Router) -> Self {
+        let listener = TcpListener::bind("127.0.0.1:8080").await.unwrap();
         HttpService { listener, router }
     }
 
