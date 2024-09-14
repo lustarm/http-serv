@@ -1,15 +1,20 @@
 use crate::http;
 use crate::parse::parse_req;
+use futures::future::BoxFuture;
 use log::info;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 
+type RouterFunction = dyn Fn(&mut TcpStream) -> BoxFuture<std::io::Result<()>> + Send + Sync;
+
+type RouterFunctionWrapper = Arc<Box<RouterFunction>>;
+
 // Simple router for testing
 #[derive(Clone)]
 pub struct Router {
-    routes: HashMap<String, String>,
+    routes: HashMap<String, RouterFunctionWrapper>,
 }
 
 impl Router {
@@ -19,10 +24,27 @@ impl Router {
         }
     }
 
-    pub fn add_route(&mut self, key: String, payload: String) {
-        self.routes.insert(key, payload);
+    pub fn add_route(&mut self, key: &str, payload: RouterFunctionWrapper) {
+        self.routes.insert(key.to_string(), payload);
     }
 
+    pub async fn not_found(self, writer: &mut TcpStream) -> std::io::Result<()> {
+        writer
+            .write_all(
+                http::HttpResponse::new(
+                    "HTTP/1.1",
+                    http::HttpStatus::NotFound,
+                    "404 page not found",
+                )
+                .to_string()
+                .as_bytes(),
+            )
+            .await?;
+
+        Ok(())
+    }
+
+    /*
     pub fn get_route(&self, key: &str) -> Option<&String> {
         self.routes.get(key)
     }
@@ -30,36 +52,24 @@ impl Router {
     pub fn get_routes(self) -> HashMap<String, String> {
         self.routes
     }
+    */
 }
 
-pub async fn handle_get(mut socket: TcpStream, payload: http::HttpPayload, router: Router) {
-    for (key, value) in router.routes.into_iter() {
-        match payload.clone().get_path() {
-            key => {
-                socket
-                    .write_all(
-                        http::HttpResponse::new("HTTP/1.1", http::HttpStatus::Ok, &value)
-                            .to_string()
-                            .as_bytes(),
-                    )
-                    .await
-                    .unwrap();
-            }
-            _ => {
-                socket
-                    .write_all(
-                        http::HttpResponse::new("HTTP/1.1", http::HttpStatus::NotFound, "404")
-                            .to_string()
-                            .as_bytes(),
-                    )
-                    .await
-                    .unwrap();
-            }
+pub async fn handle_get(
+    mut writer: TcpStream,
+    payload: http::HttpPayload,
+    router: Router,
+) -> std::io::Result<()> {
+    for (key, value) in router.routes.clone().into_iter() {
+        if payload.clone().get_path() != key {
+            router.clone().not_found(&mut writer).await?;
         }
+        value(&mut writer).await?;
     }
+    Ok(())
 }
 
-pub async fn handle_req(mut socket: TcpStream, router: Router) {
+pub async fn handle_req(mut socket: TcpStream, router: Router) -> std::io::Result<()> {
     let mut buffer: [u8; 128] = [0; 128];
     socket.read(&mut buffer).await.unwrap();
 
@@ -73,11 +83,12 @@ pub async fn handle_req(mut socket: TcpStream, router: Router) {
             if let Err(e) = socket.write_all(error_response.as_bytes()).await {
                 info!("Failed to send error response: {}", e);
             }
-            return;
         }
         http::HttpType::GET => {
-            handle_get(socket, http_payload, router).await;
+            handle_get(socket, http_payload, router).await?;
         }
         http::HttpType::_POST => {}
     }
+
+    Ok(())
 }
